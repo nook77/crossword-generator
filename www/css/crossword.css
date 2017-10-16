@@ -1,0 +1,61 @@
+body {
+	/*background: #E8DDA9;*/
+    background: #efefef;
+}
+
+#mainWindow {
+    padding-top: 100px;
+}
+
+p.description {
+    width: 50%;
+    margin: 0 auto;
+}
+
+#wrapper {
+    height: 550px;
+    position: relative;
+    width: 858px;
+    margin: 0 auto;
+}
+
+#puzzle {
+	width: 480px;
+	height: 480px;
+	display: none;
+}
+
+.square {
+	position: relative;
+    border: 1px solid black;
+    width: 30px;
+    height: 30px;
+    float: left;
+}
+
+.square.white {
+    background: #AB9375;
+    z-index: -1;
+}
+
+.square.black {
+    background: black;
+}
+
+.cw_num {
+    font-size: .65em;
+    position: absolute;
+    top: 0px;
+    left: 1px;
+}
+
+.cw_let {
+    font-size: 1.45em;
+    text-align: center;
+    transform: translate(0%,27%);
+    font-family: arial;
+}
+
+.show {
+	display: block !important;
+}

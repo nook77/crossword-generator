@@ -1,0 +1,55 @@
+<!DOCTYPE html> 
+<html lang="en"> 
+    <head> 
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Crossword Generator</title>
+        <link rel="apple-touch-icon" sizes="180x180" href="../../apple-touch-icon.png">
+		<link rel="icon" type="image/png" sizes="32x32" href="../../favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="../../favicon-16x16.png">
+		<link rel="manifest" href="../../manifest.json">
+		<link rel="mask-icon" href="../../safari-pinned-tab.svg" color="#5bbad5">
+		<meta name="theme-color" content="#ffffff">
+        <link rel="stylesheet" href="../../assets/main.css">
+        <link rel="stylesheet" href="https://code.jquery.com/ui/1.9.2/themes/base/jquery-ui.css">
+        <script type="text/javascript" src="js/lib/jquery-1.8.2.js"></script>
+  		<script type="text/javascript" src="js/lib/jquery-ui-1.9.0.custom.min.js"></script>
+  		<script src="js/lib/jquery.ui.touch-punch.min.js"></script>
+  		<script type="text/javascript" src="js/game.js"></script>
+  		<script type="text/javascript" src="js/gameView.js"></script>
+        <script type="text/javascript" src="js/config.js"></script>
+        <script type="text/javascript" src="js/squares.js"></script>
+        <script type="text/javascript" src="js/Board.js"></script>
+        <script type="text/javascript" src="js/Move.js"></script>
+        <script type="text/javascript" src="js/Square.js"></script>
+        <script type="text/javascript" src="js/State.js"></script>
+        <script type="text/javascript" src="js/AI.js"></script>
+        <script type="text/javascript" src="js/startScreen.js"></script>
+        <script type="text/javascript" src="js/startScreenView.js"></script>
+        <link rel="stylesheet" href="css/crossword.css" type="text/css">
+        <script>
+        
+$(document).ready(function() {
+	game.init();
+});
+
+</script>
+
+</head> 
+    <body>
+<div id="header-place"></div>
+    	<script>
+    	
+$(function(){
+  $("#header-place").load("/assets/nav.html");
+});
+
+</script>
+    	<div id="mainWindow">
+			<div id="wrapper">
+				<div id="puzzle">
+				</div>
+    		</div>
+    	</div>
+    </body> 
+</html> 
