@@ -34,6 +34,23 @@ gameView.addLetter = function(square,letter) {
 	$('#' + squareId).append('<div class="cw_let">'+letter+'</div>');
 }
 
+gameView.removeLetter = function(square) {
+	var squareId = 's' + square.row+'_'+square.col;
+	$('#' + squareId + ' .cw_let').remove();
+}
+
+gameView.renderAnswers = function(board) {
+	for (var row = 0; row < Config.numRows;row++) {
+		for (var col = 0; col < Config.numCols;col++) {
+			if (board[row][col] !== "e" && board[row][col] !== "b") {
+				var squareId = 's' + row+'_'+col;
+				gameView.removeLetter({row:row,col:col});
+				$('#' + squareId).append('<div class="cw_let">'+board[row][col]+'</div>');
+			}
+		}
+	}
+}
+
 gameView.renderPiece = function(col, row, player, count) {
 	var squareId = 's' + row+'_'+col;
 	var pieceId = player + count;

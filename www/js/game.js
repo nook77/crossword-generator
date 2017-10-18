@@ -15,6 +15,7 @@ var game = {
 		this.answers = new Object();
 		this.answerLengths = new Object();
 		this.attemptedLettersInSquares = new Object();
+		this.attemptedWordsInSquares = new Object();
 		this.lettersArray = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];	
 		this.directionsArray = ["n","e","s","w"];					
 		this.board = Board.buildBoard();
@@ -80,27 +81,54 @@ game.addNumbers = function() {
 game.addWords = function() {
 	var randNum;
 	var letter;
-	var letterFound = false;
-	var letterFail = false;
+	var letterFound = false; //a letter that works in a column has been found
+	var letterFail = false; //no letter will work in the column
 	var triedLetters = [];
 	var wordToBuild = [];
 	var attemptedWords = [];
 	var word;
+	var wordLength;
+	var startColWord; //Column that is the start of a word
+	var lastColWord; //Column that is the end of a word
 	var board = Board.buildBoard(game.board);
 	
 	for (var row = 0; row < Config.numRows;row++) {
+		//starting a new row, so reset variables
 		wordToBuild = [];
+		wordLength = 0;
+		startColWord = '';
+		lastColWord = '';
 		for (var col = 0; col < Config.numCols;col++) {
 			if (board[row][col] !== "e") {
+				//we aren't in the middle of a word so reset variables
 				wordToBuild = [];
-				attemptedWords = [];
+				wordLength = 0;
+				startColWord = '';
+				lastColWord = '';
 				continue;
 			}
-			var sqId = 's'+row+'_'+col;			
+			
+			//Setting some variables if they aren't already. These are reset after a word is completed
+			if (!wordLength) {
+				wordLength = Board.getWordLength({row:row,col:col}, board, true);
+				startColWord = Board.getFirstColOfWord({row:row,col:col}, board);
+				lastColWord = startColWord + wordLength - 1;
+			}
+			
+			if (board[row][startColWord] == "e") {
+				col = startColWord;
+			}
+			
+			var sqId = 's'+row+'_'+col;
+			
+			//Searching for a letter to fit in the current square		
 			while (!letterFound && !letterFail) {
+				
+				//Choose a random letter
 				randNum = Math.floor(Math.random() * (game.lettersArray.length));
 				letter = game.lettersArray[randNum];
-
+				
+				//if this letter has been tried in this column while creating this word, pick another letter
 				while (($.inArray(letter, triedLetters) != -1)) {
 					if (triedLetters.length > 25) {
 						letterFail = true;	
@@ -110,10 +138,12 @@ game.addWords = function() {
 					letter = game.lettersArray[randNum];
 				}
 				
+				//attemptedLetters have been tried in the squares that serve as the key in the making of this word
 				if ($.inArray(letter, game.attemptedLettersInSquares[sqId]) === -1) {
-					if (word = Board.isValidForLetter({row:row,col:col},board,letter,attemptedWords)) {
+					
+					//Checking to see if this letter will fit in this square
+					if (word = Board.isValidForLetter({row:row,col:col},board,letter,game.attemptedWordsInSquares['s'+row+"_"+startColWord])) {
 						letterFound = true;
-						//attemptedWords.push(word);
 					} else {
 						letterFound = false;
 					}
@@ -122,43 +152,86 @@ game.addWords = function() {
 			}
 			
 			if (!letterFail) {
-				console.log(letter + " is valid");
+				//we've found a letter that works in this square
 				wordToBuild.push(letter);
+				//adding this letter to this array to prevent rechecking the square with the same letter if we have to backtrack
 				if (!game.attemptedLettersInSquares[sqId]) {
 					game.attemptedLettersInSquares[sqId] = [];
 				}
 				game.attemptedLettersInSquares[sqId].push(letter);
+				
 				board[row][col] = letter;
+				
+				//resetting variables
 				triedLetters = [];
 				letterFound = false;
-				//gameView.addLetter({row:row,col:col},letter);
-			} else {
-				if (wordToBuild.length > 0) {
+				
+				//displaying the current board
+				gameView.renderAnswers(board);
+				
+				if (col == lastColWord) { //We've finished a complete word
+					//add the word to this array so that we don't try to use it again if we backtrack
+					if (!game.attemptedWordsInSquares['s'+row+"_"+startColWord]) {
+						game.attemptedWordsInSquares['s'+row+"_"+startColWord] = [];
+					}
+					game.attemptedWordsInSquares['s'+row+"_"+startColWord].push(word);
+				}
+			} else { //we've run out of letters to try in this square
+				if (wordToBuild.length > 0) { //we have to backtrack a column
 					letter = wordToBuild.pop();
+					
+					//resetting variables
 					triedLetters = [];
 					triedLetters.push(letter);
-					attemptedWords.push(word);
-					Board.clearSquaresToRight({row:row,col:col},board);
-					board[row][col-1] = "e";
-					col = col - 2;
 					letterFail = false;
+					
+					//clearing out letters in this word from this square on.
+					board = Board.clearSquaresToRight({row:row,col:col},board);
+					
+					//going back one column (subtracting 2 because 1 will be added back)
+					col = col - 2;
+					
+					gameView.renderAnswers(board);
 				} else {
 					//Clearing out the current word we're working on because it won't work
-					Board.clearSquaresToRight({row:row,col:col},board);
-					game.attemptedLettersInSquares[sqId] = [];
-					//Moving up a row
-					row = row - 1;
+					board = Board.clearSquaresToRight({row:row,col:startColWord},board);
 					
-					//Clearing out that word, too, because we need to try a new word here
-					col = Board.getFirstColOfWord({row:row,col:col},board);
-					Board.clearSquaresToRight({row:row,col:col},board);
-					letter = board[row][col];
+					//we will be backtracking up a row, so we can clear out the attemptedWord from this square because the word above will change, so it's possible this word could work
+					game.attemptedWordsInSquares['s'+row+"_"+startColWord] = [];
+
+					//Clearing out all words directly above this word
+					var newCol = col;
+					var newRow = row - 1;
+					var newStartCol;
+					while (newCol > startColWord) {
+						if (board[newRow][newCol] !== "e" && board[newRow][newCol] !== "b") {
+						
+						//getting the word containing the current square to add it to the attemptedWords list.
+						newStartCol = Board.getFirstColOfWord({row:newRow,col:newCol},board);
+						word = Board.getWordFromSquare({row:newRow,col:newStartCol},board);
+						game.attemptedWordsInSquares['s'+newRow+"_"+newStartCol].push(word);
+						
+						//Clearing out that word, too, because we need to try a new word here
+						board = Board.clearSquaresToRight({row:newRow,col:newStartCol},board);
+						}
+						newCol--;
+					}
+					
+					//We want to start back at the first column of this word
+					col = startColWord - 1;
+					
+					//Moving up a row
+					row--;
+					
+					//reseting variables
 					triedLetters = [];
-					triedLetters.push(letter);
-					board[row][col] = "e";
-					game.attemptedLettersInSquares['s'+row+"_"+col].push(letter);
-					col--;
 					letterFail = false;
+					wordToBuild = [];
+					wordLength = 0;
+					startColWord = '';
+					lastColWord = '';
+					
+					gameView.renderAnswers(board);
 				}	
 			}
 		}

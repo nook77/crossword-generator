@@ -103,9 +103,9 @@ Board.isValidForLetter = function(square,board,letter,attemptedWords) {
 	priorLetters.push(letter);
 	for (var i = 0; i<wordChoices.length; i++) {
 		var possibleWord = wordChoices[i];
-		//if ($.inArray(possibleWord, attemptedWords) !== -1) {
-		//	continue;
-		//}
+		if ($.inArray(possibleWord, attemptedWords) !== -1) {
+			continue;
+		}
 		for (var j = 0; j<priorLetters.length; j++) {
 			if (possibleWord.charAt(j) != priorLetters[j]) {
 				valid = false;
@@ -131,6 +131,9 @@ Board.isValidForLetter = function(square,board,letter,attemptedWords) {
 	priorLetters.push(letter);
 	for (var i = 0; i<wordChoices.length; i++) {
 		var possibleWord = wordChoices[i];
+		if ($.inArray(possibleWord, attemptedWords) !== -1) {
+			continue;
+		}
 		for (var j = 0; j<priorLetters.length; j++) {
 			if (possibleWord.charAt(j) != priorLetters[j]) {
 				valid = false;
@@ -229,6 +232,21 @@ Board.findNumLetterSquaresInDirection = function(square,dir,board) {
 	return letterSquares;
 }
 
+Board.findNumBlackSquaresInDirection = function(square,dir,board) {
+	var blackSquares = 0;
+	var nextSquare = Board.getNextSquareInDirection(square, dir);
+	
+	while (nextSquare) {
+		if (board[nextSquare.row][nextSquare.col] === "b") {
+			blackSquares++;
+			nextSquare = Board.getNextSquareInDirection(nextSquare, dir);
+		} else {
+			nextSquare = "";
+		}
+	}
+	return blackSquares;
+}
+
 Board.findNumEmptySquaresInDirection = function(square,dir,board) {
 	var emptySquares = 0;
 	var nextSquare = Board.getNextSquareInDirection(square, dir);
@@ -246,9 +264,11 @@ Board.findNumEmptySquaresInDirection = function(square,dir,board) {
 
 Board.clearSquaresToRight = function(square,board) {
 	var squares = Board.getSquaresToRight(square,board);
+	squares.push(square);
 	for (var i=0; i<squares.length;i++) {
 		var sqId = "s"+squares[i].row+"_"+squares[i].col;
 		board[squares[i].row][squares[i].col] = "e";
+		gameView.removeLetter({row:squares[i].row,col:squares[i].col});
 		game.attemptedLettersInSquares[sqId] = [];
 	}
 	return board;
@@ -270,11 +290,44 @@ Board.getSquaresToRight = function(square,board) {
 	return squares;	
 }
 
-Board.getFirstColOfWord = function(square,board) {
-	var numSquares = Board.findNumLetterSquaresInDirection(square,'w',board);
+Board.getLettersToRight = function(square,board) {
+	var letters = [];
+	var nextSquare = Board.getNextSquareInDirection(square, 'e');
 	
-	col = square.col - numSquares;
+	while (nextSquare) {
+		if (board[nextSquare.row][nextSquare.col] !== "b" && board[nextSquare.row][nextSquare.col] !== "e") {
+			letters.push(board[nextSquare.row][nextSquare.col]);
+			nextSquare = Board.getNextSquareInDirection(nextSquare, 'e');
+		} else {
+			nextSquare = "";
+		}
+	}
+	
+	return letters;	
+}
+
+Board.getFirstColOfWord = function(square,board) {
+	var numSquares = 0;
+	if (board[square.row][square.col] == "b") {
+		numSquares = Board.findNumBlackSquaresInDirection(square,'e',board);
+		col = square.col + numSquares + 1;
+	} else {
+		numSquares = Board.findNumLetterSquaresInDirection(square,'w',board);
+		col = square.col - numSquares;
+	}
+	
 	return col;
+}
+
+Board.getWordFromSquare = function(square,board) {
+	var letters = [];
+	var word;
+	square.col = Board.getFirstColOfWord(square,board);
+	letters = Board.getLettersToRight(square,board);
+	letters.unshift(board[square.row][square.col]);
+	
+	word = letters.join('');
+	return word;
 }
 
 Board.getNextSquareInDirection = function(square, direction) {
