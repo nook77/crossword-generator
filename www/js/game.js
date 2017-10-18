@@ -1,5 +1,5 @@
 /*
-I think I need to build up a complete word first before adding it into the grid. So, start with a random letter. Make sure that there are words of that length that start with the random letter, both across and down. If so, add that letter into a wordToBuild array and move to the next column. If we get to a point where we can't find a letter to fit in both an across and down word, we need to move back a column and try a different letter.
+I think I need to build up a complete word first before adding it into the grid. So, start with a random letter. Make sure that there are words of that length that start with the random letter, both across and down. If so, add that letter into a wordInProgress array and move to the next column. If we get to a point where we can't find a letter to fit in both an across and down word, we need to move back a column and try a different letter.
 
 
 */
@@ -14,6 +14,7 @@ var game = {
 		this.availableMoves = new Array();
 		this.answers = new Object();
 		this.answerLengths = new Object();
+		this.answerLengthsByLetter = new Object();
 		this.attemptedLettersInSquares = new Object();
 		this.attemptedWordsInSquares = new Object();
 		this.lettersArray = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];	
@@ -50,9 +51,22 @@ game.getAnswerLengths = function() {
 		'url': "/data/answers_length_hash.json",
 		'dataType': "json",
 		'success': function(data) {
-			console.log("success");
 			for (var len in data) {
 				game.answerLengths[len] = data[len];
+			}
+			game.getAnswerLengthsByLetter();
+		}
+	});
+}
+
+game.getAnswerLengthsByLetter = function() {
+	$.ajax({
+		'url': "/data/answers_length_by_letter_hash.json",
+		'dataType': "json",
+		'success': function(data) {
+			console.log("success");
+			for (var x in data) {
+				game.answerLengthsByLetter[x] = data[x];
 			}
 			game.addNumbers();
 		}
@@ -84,7 +98,7 @@ game.addWords = function() {
 	var letterFound = false; //a letter that works in a column has been found
 	var letterFail = false; //no letter will work in the column
 	var triedLetters = [];
-	var wordToBuild = [];
+	var wordInProgress = [];
 	var attemptedWords = [];
 	var word;
 	var wordLength;
@@ -94,14 +108,14 @@ game.addWords = function() {
 	
 	for (var row = 0; row < Config.numRows;row++) {
 		//starting a new row, so reset variables
-		wordToBuild = [];
+		wordInProgress = '';
 		wordLength = 0;
 		startColWord = '';
 		lastColWord = '';
 		for (var col = 0; col < Config.numCols;col++) {
 			if (board[row][col] !== "e") {
 				//we aren't in the middle of a word so reset variables
-				wordToBuild = [];
+				wordInProgress = '';
 				wordLength = 0;
 				startColWord = '';
 				lastColWord = '';
@@ -139,10 +153,10 @@ game.addWords = function() {
 				}
 				
 				//attemptedLetters have been tried in the squares that serve as the key in the making of this word
-				if ($.inArray(letter, game.attemptedLettersInSquares[sqId]) === -1) {
-					
+				//if ($.inArray(letter, game.attemptedLettersInSquares[sqId]) === -1) {
+				if (!wordInProgress || $.inArray(wordInProgress+letter, game.attemptedWordsInSquares['s'+row+"_"+startColWord]) === -1) {
 					//Checking to see if this letter will fit in this square
-					if (word = Board.isValidForLetter({row:row,col:col},board,letter,game.attemptedWordsInSquares['s'+row+"_"+startColWord])) {
+					if (Board.isValidForLetter({row:row,col:col},board,letter,wordInProgress,game.attemptedWordsInSquares['s'+row+"_"+startColWord])) {
 						letterFound = true;
 					} else {
 						letterFound = false;
@@ -153,12 +167,12 @@ game.addWords = function() {
 			
 			if (!letterFail) {
 				//we've found a letter that works in this square
-				wordToBuild.push(letter);
+				wordInProgress += letter;
 				//adding this letter to this array to prevent rechecking the square with the same letter if we have to backtrack
-				if (!game.attemptedLettersInSquares[sqId]) {
-					game.attemptedLettersInSquares[sqId] = [];
-				}
-				game.attemptedLettersInSquares[sqId].push(letter);
+				//if (!game.attemptedLettersInSquares[sqId]) {
+				//	game.attemptedLettersInSquares[sqId] = [];
+				//}
+				//game.attemptedLettersInSquares[sqId].push(letter);
 				
 				board[row][col] = letter;
 				
@@ -169,24 +183,30 @@ game.addWords = function() {
 				//displaying the current board
 				gameView.renderAnswers(board);
 				
-				if (col == lastColWord) { //We've finished a complete word
+				//if (col == lastColWord) { //We've finished a complete word
 					//add the word to this array so that we don't try to use it again if we backtrack
 					if (!game.attemptedWordsInSquares['s'+row+"_"+startColWord]) {
 						game.attemptedWordsInSquares['s'+row+"_"+startColWord] = [];
 					}
-					game.attemptedWordsInSquares['s'+row+"_"+startColWord].push(word);
-				}
+					game.attemptedWordsInSquares['s'+row+"_"+startColWord].push(wordInProgress);
+				//}
 			} else { //we've run out of letters to try in this square
-				if (wordToBuild.length > 0) { //we have to backtrack a column
-					letter = wordToBuild.pop();
+				if (wordInProgress.length > 0) { //we have to backtrack a column
+					//letter = wordInProgress.pop();
+					letter = wordInProgress[wordInProgress.length -1];
+					//if (!game.attemptedWordsInSquares['s'+row+"_"+startColWord]) {
+					//	game.attemptedWordsInSquares['s'+row+"_"+startColWord] = [];
+					//}
+					//game.attemptedWordsInSquares['s'+row+"_"+startColWord].push(wordInProgress);
+					wordInProgress = wordInProgress.slice(0, -1);
 					
 					//resetting variables
 					triedLetters = [];
 					triedLetters.push(letter);
 					letterFail = false;
 					
-					//clearing out letters in this word from this square on.
-					board = Board.clearSquaresToRight({row:row,col:col},board);
+					//clearing out letters in this word from the previous square on.
+					board = Board.clearSquaresToRight({row:row,col:col-1},board);
 					
 					//going back one column (subtracting 2 because 1 will be added back)
 					col = col - 2;
@@ -226,7 +246,7 @@ game.addWords = function() {
 					//reseting variables
 					triedLetters = [];
 					letterFail = false;
-					wordToBuild = [];
+					wordInProgress = '';
 					wordLength = 0;
 					startColWord = '';
 					lastColWord = '';

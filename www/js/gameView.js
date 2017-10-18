@@ -46,6 +46,8 @@ gameView.renderAnswers = function(board) {
 				var squareId = 's' + row+'_'+col;
 				gameView.removeLetter({row:row,col:col});
 				$('#' + squareId).append('<div class="cw_let">'+board[row][col]+'</div>');
+			} else if (board[row][col] == "e") {
+				gameView.removeLetter({row:row,col:col});
 			}
 		}
 	}

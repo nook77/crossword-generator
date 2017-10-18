@@ -89,64 +89,46 @@ Board.isValidBlackSquare = function(square,board) {
 	return true;
 }
 
-Board.isValidForLetter = function(square,board,letter,attemptedWords) {
+Board.isValidForLetter = function(square,board,letter,word,attemptedWords) {
 	var wordLength;
 	var wordChoices;
 	var priorLetters;
-	var word;
 	var valid = false;
 	//checking across
-	
+	console.log("*********************");
+	console.log("*********************");
+	console.log("*********************");
+	console.log("checking if " + letter + " works in ", square);
 	wordLength = Board.getWordLength(square,board,true);
-	wordChoices = game.answerLengths[wordLength];
-	priorLetters = Board.getPriorLetters(square,board,true);
-	priorLetters.push(letter);
-	for (var i = 0; i<wordChoices.length; i++) {
-		var possibleWord = wordChoices[i];
-		if ($.inArray(possibleWord, attemptedWords) !== -1) {
-			continue;
-		}
-		for (var j = 0; j<priorLetters.length; j++) {
-			if (possibleWord.charAt(j) != priorLetters[j]) {
-				valid = false;
-				break;
-			} else {
-				word = possibleWord;
-				valid = true;
-			}
-		}
-		if (valid) {
-			break;
-		}
-	}
-	
-	if (!valid) {
+	console.log("wordLength: " + wordLength);
+	word += letter;
+	console.log("word so far: " + word);
+	wordChoices = game.answerLengthsByLetter[wordLength][word];
+	if (!wordChoices) {
+		console.log("no matching words");
+		return false;
+	} else if ($.inArray(word, attemptedWords) !== -1) {
 		return false;
 	}
-	//checking down
 	
-	wordLength = Board.getWordLength(square,board);
-	wordChoices = game.answerLengths[wordLength];
-	priorLetters = Board.getPriorLetters(square,board);
-	priorLetters.push(letter);
-	for (var i = 0; i<wordChoices.length; i++) {
-		var possibleWord = wordChoices[i];
-		if ($.inArray(possibleWord, attemptedWords) !== -1) {
-			continue;
-		}
-		for (var j = 0; j<priorLetters.length; j++) {
-			if (possibleWord.charAt(j) != priorLetters[j]) {
-				valid = false;
-				break;
-			} else {
-				valid = true;
-			}
-		}
-		if (valid) {
-			return word;
-		}
+	//checking down
+	console.log("Matches! ", wordChoices);
+	console.log("Checking down...");
+	wordLength = Board.getWordLength(square,board,false);
+	console.log("wordLength: " + wordLength);
+	word = Board.getWordFromSquare(square,board,false);
+	word += letter;
+	console.log("word so far: " + word);
+	wordChoices = game.answerLengthsByLetter[wordLength][word];
+	if (!wordChoices) {
+		console.log("no matching words");
+		return false;
+	} else if ($.inArray(word, attemptedWords) !== -1) {
+		return false;
 	}
-	return false;
+	console.log("Matches! ", wordChoices);
+	console.log(letter + " is valid");
+	return true;
 }
 
 Board.getLetterPosInWord = function(square,board,across) {
@@ -263,7 +245,7 @@ Board.findNumEmptySquaresInDirection = function(square,dir,board) {
 }
 
 Board.clearSquaresToRight = function(square,board) {
-	var squares = Board.getSquaresToRight(square,board);
+	var squares = Board.getSquaresInDirection(square,board,'e');
 	squares.push(square);
 	for (var i=0; i<squares.length;i++) {
 		var sqId = "s"+squares[i].row+"_"+squares[i].col;
@@ -274,14 +256,14 @@ Board.clearSquaresToRight = function(square,board) {
 	return board;
 }
 
-Board.getSquaresToRight = function(square,board) {
+Board.getSquaresInDirection = function(square,board,dir) {
 	var squares = [];
-	var nextSquare = Board.getNextSquareInDirection(square, 'e');
+	var nextSquare = Board.getNextSquareInDirection(square, dir);
 	
 	while (nextSquare) {
 		if (board[nextSquare.row][nextSquare.col] !== "b") {
 			squares.push({row:nextSquare.row,col:nextSquare.col});
-			nextSquare = Board.getNextSquareInDirection(nextSquare, 'e');
+			nextSquare = Board.getNextSquareInDirection(nextSquare, dir);
 		} else {
 			nextSquare = "";
 		}
@@ -290,14 +272,14 @@ Board.getSquaresToRight = function(square,board) {
 	return squares;	
 }
 
-Board.getLettersToRight = function(square,board) {
+Board.getLettersInDirection = function(square,board,dir) {
 	var letters = [];
-	var nextSquare = Board.getNextSquareInDirection(square, 'e');
+	var nextSquare = Board.getNextSquareInDirection(square, dir);
 	
 	while (nextSquare) {
 		if (board[nextSquare.row][nextSquare.col] !== "b" && board[nextSquare.row][nextSquare.col] !== "e") {
 			letters.push(board[nextSquare.row][nextSquare.col]);
-			nextSquare = Board.getNextSquareInDirection(nextSquare, 'e');
+			nextSquare = Board.getNextSquareInDirection(nextSquare, dir);
 		} else {
 			nextSquare = "";
 		}
@@ -319,14 +301,38 @@ Board.getFirstColOfWord = function(square,board) {
 	return col;
 }
 
-Board.getWordFromSquare = function(square,board) {
-	var letters = [];
-	var word;
-	square.col = Board.getFirstColOfWord(square,board);
-	letters = Board.getLettersToRight(square,board);
-	letters.unshift(board[square.row][square.col]);
+Board.getFirstRowOfWord = function(square,board) {
+	var numSquares = 0;
+	if (board[square.row][square.col] == "b") {
+		numSquares = Board.findNumBlackSquaresInDirection(square,'s',board);
+		row = square.row + numSquares + 1;
+	} else {
+		numSquares = Board.findNumLetterSquaresInDirection(square,'n',board);
+		row = square.row - numSquares;
+	}
 	
-	word = letters.join('');
+	return row;
+}
+
+Board.getWordFromSquare = function(square,board,across) {
+	var letters = [];
+	var word = '';
+	if (across) {
+		square.col = Board.getFirstColOfWord(square,board);
+		letters = Board.getLettersInDirection(square,board,'e');
+		if (board[square.row][square.col] !== 'e') {
+			letters.unshift(board[square.row][square.col]);
+		}
+		
+		word = letters.join('');
+	} else {
+		square.row = Board.getFirstRowOfWord(square,board);
+		letters = Board.getLettersInDirection(square,board,'s');
+		if (board[square.row][square.col] !== 'e') {
+			letters.unshift(board[square.row][square.col]);
+		}
+		word = letters.join('');
+	}
 	return word;
 }
 
