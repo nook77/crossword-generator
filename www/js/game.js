@@ -17,6 +17,7 @@ var game = {
 		this.answerLengthsByLetter = new Object();
 		this.attemptedLettersInSquares = new Object();
 		this.attemptedWordsInSquares = new Object();
+		this.squares = new Object();
 		this.lettersArray = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];	
 		this.directionsArray = ["n","e","s","w"];					
 		this.board = Board.buildBoard();
@@ -84,12 +85,68 @@ game.addNumbers = function() {
 			}
 			if (Board.isValidForNum({row:row,col:col},board)) {
 				gameView.addNumber(number,{row:row,col:col},board);
+				game.squares['s'+row+'_'+col] = new Object();
+				game.squares['s'+row+'_'+col]["num"] = number;
 				number++;
 			}
 			
 		}
 	}
-	game.addWords();
+	//game.addWords();
+	game.analyzeBoard(board);
+}
+
+game.analyzeBoard = function(board) {
+	
+	var squares = game.createSquaresObj(board);
+}
+
+game.createSquaresObj = function(board) {
+	
+	var inMiddleOfWord = false;
+	//across
+	var across = true;
+	for (var row = 0; row < Config.numRows;row++) {
+		inMiddleOfWord = false;
+		for (var col = 0; col < Config.numCols;col++) {
+			if (board[row][col] !== "e" || inMiddleOfWord) {
+				if (board[row][col] == "b") {
+					inMiddleOfWord = false;
+				}
+				continue;
+			} else {
+				inMiddleOfWord = false;
+			}
+			var sqId = 's'+row+'_'+col;
+			var number = game.squares[sqId]["num"];
+			var wordLength = Board.getWordLength({row:row,col:col},board,across);
+			game.squares[sqId][number+"a"] = new Object();
+			game.squares[sqId][number+"a"].length = wordLength;
+			inMiddleOfWord = true;
+		}
+	}
+	//down
+	var across = false;
+	for (var col = 0; col < Config.numCols;col++) {
+		inMiddleOfWord = false;
+		for (var row = 0; row < Config.numRows;row++) {
+			if (board[row][col] !== "e" || inMiddleOfWord) {
+				if (board[row][col] == "b") {
+					inMiddleOfWord = false;
+				}
+				continue;
+			} else {
+				inMiddleOfWord = false;
+			}
+			var sqId = 's'+row+'_'+col;
+			var number = game.squares[sqId]["num"];
+			var wordLength = Board.getWordLength({row:row,col:col},board,across);
+			game.squares[sqId][number+"d"] = new Object();
+			game.squares[sqId][number+"d"].length = wordLength;
+			inMiddleOfWord = true;
+		}
+	}
+	return game.squares;
 }
 
 game.addWords = function() {
@@ -107,6 +164,10 @@ game.addWords = function() {
 	var board = Board.buildBoard(game.board);
 	
 	for (var row = 0; row < Config.numRows;row++) {
+		//if (row == 8) {
+		//	debugger;
+		//}
+		//debugger;
 		//starting a new row, so reset variables
 		wordInProgress = '';
 		wordLength = 0;
@@ -134,6 +195,12 @@ game.addWords = function() {
 			}
 			
 			var sqId = 's'+row+'_'+col;
+			if (!game.attemptedLettersInSquares[sqId]) {
+				game.attemptedLettersInSquares[sqId] = [];
+			}
+			if (!game.attemptedWordsInSquares['s'+row+"_"+startColWord]) {
+				game.attemptedWordsInSquares['s'+row+"_"+startColWord] = [];
+			}
 			
 			//Searching for a letter to fit in the current square		
 			while (!letterFound && !letterFail) {
@@ -153,13 +220,14 @@ game.addWords = function() {
 				}
 				
 				//attemptedLetters have been tried in the squares that serve as the key in the making of this word
-				//if ($.inArray(letter, game.attemptedLettersInSquares[sqId]) === -1) {
-				if (!wordInProgress || $.inArray(wordInProgress+letter, game.attemptedWordsInSquares['s'+row+"_"+startColWord]) === -1) {
-					//Checking to see if this letter will fit in this square
-					if (Board.isValidForLetter({row:row,col:col},board,letter,wordInProgress,game.attemptedWordsInSquares['s'+row+"_"+startColWord])) {
-						letterFound = true;
-					} else {
-						letterFound = false;
+				if ($.inArray(letter, game.attemptedLettersInSquares[sqId]) === -1) {
+					if (!wordInProgress || $.inArray(wordInProgress+letter, game.attemptedWordsInSquares['s'+row+"_"+startColWord]) === -1) {
+						//Checking to see if this letter will fit in this square
+						if (Board.isValidForLetter({row:row,col:col},board,letter,wordInProgress,game.attemptedWordsInSquares['s'+row+"_"+startColWord])) {
+							letterFound = true;
+						} else {
+							letterFound = false;
+						}
 					}
 				}
 				triedLetters.push(letter);
@@ -169,10 +237,7 @@ game.addWords = function() {
 				//we've found a letter that works in this square
 				wordInProgress += letter;
 				//adding this letter to this array to prevent rechecking the square with the same letter if we have to backtrack
-				//if (!game.attemptedLettersInSquares[sqId]) {
-				//	game.attemptedLettersInSquares[sqId] = [];
-				//}
-				//game.attemptedLettersInSquares[sqId].push(letter);
+				game.attemptedLettersInSquares[sqId].push(letter);
 				
 				board[row][col] = letter;
 				
@@ -183,21 +248,23 @@ game.addWords = function() {
 				//displaying the current board
 				gameView.renderAnswers(board);
 				
-				//if (col == lastColWord) { //We've finished a complete word
+				if (col == lastColWord) { //We've finished a complete word
 					//add the word to this array so that we don't try to use it again if we backtrack
-					if (!game.attemptedWordsInSquares['s'+row+"_"+startColWord]) {
-						game.attemptedWordsInSquares['s'+row+"_"+startColWord] = [];
-					}
 					game.attemptedWordsInSquares['s'+row+"_"+startColWord].push(wordInProgress);
-				//}
-			} else { //we've run out of letters to try in this square
-				if (wordInProgress.length > 0) { //we have to backtrack a column
-					//letter = wordInProgress.pop();
+					
+					//clearing out the attempted letters in the squares for this word. We may need to use them in the future in backtracking. 
+					var squares = Board.getSquaresInDirection({row:row,col:startColWord},board,'e');
+					for (var i=0;i<squares.length;i++) {
+						var tmpSqId = "s"+squares[i].row+"_"+squares[i].col;
+						game.attemptedLettersInSquares[tmpSqId] = [];
+					}
+					game.attemptedLettersInSquares['s'+row+'_'+startColWord] = [];
+				}
+			} else { //we've run out of letters to try in this square which means that we need to find a different letter in the previous column
+				if (wordInProgress.length > 0) {
 					letter = wordInProgress[wordInProgress.length -1];
-					//if (!game.attemptedWordsInSquares['s'+row+"_"+startColWord]) {
-					//	game.attemptedWordsInSquares['s'+row+"_"+startColWord] = [];
-					//}
-					//game.attemptedWordsInSquares['s'+row+"_"+startColWord].push(wordInProgress);
+					game.attemptedLettersInSquares[sqId].push(letter);
+					game.attemptedWordsInSquares['s'+row+"_"+startColWord].push(wordInProgress);
 					wordInProgress = wordInProgress.slice(0, -1);
 					
 					//resetting variables
@@ -218,9 +285,17 @@ game.addWords = function() {
 					
 					//we will be backtracking up a row, so we can clear out the attemptedWord from this square because the word above will change, so it's possible this word could work
 					game.attemptedWordsInSquares['s'+row+"_"+startColWord] = [];
+					
+					//clearing out the attempted letters in the squares for this word. We may need to use them in the future in backtracking. 
+					var squares = Board.getSquaresInDirection({row:row,col:startColWord},board,'e');
+					for (var i=0;i<squares.length;i++) {
+						var tmpSqId = "s"+squares[i].row+"_"+squares[i].col;
+						game.attemptedLettersInSquares[tmpSqId] = [];
+					}
+					game.attemptedLettersInSquares['s'+row+'_'+startColWord] = [];
 
 					//Clearing out all words directly above this word
-					var newCol = col;
+					var newCol = lastColWord;
 					var newRow = row - 1;
 					var newStartCol;
 					while (newCol > startColWord) {
@@ -228,8 +303,8 @@ game.addWords = function() {
 						
 						//getting the word containing the current square to add it to the attemptedWords list.
 						newStartCol = Board.getFirstColOfWord({row:newRow,col:newCol},board);
-						word = Board.getWordFromSquare({row:newRow,col:newStartCol},board);
-						game.attemptedWordsInSquares['s'+newRow+"_"+newStartCol].push(word);
+						//word = Board.getWordFromSquare({row:newRow,col:newStartCol},board,true);
+						//game.attemptedWordsInSquares['s'+newRow+"_"+newStartCol].push(word);
 						
 						//Clearing out that word, too, because we need to try a new word here
 						board = Board.clearSquaresToRight({row:newRow,col:newStartCol},board);
@@ -237,8 +312,9 @@ game.addWords = function() {
 						newCol--;
 					}
 					
+					
 					//We want to start back at the first column of this word
-					col = startColWord - 1;
+					col = newStartCol - 1;
 					
 					//Moving up a row
 					row--;

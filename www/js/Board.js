@@ -95,39 +95,39 @@ Board.isValidForLetter = function(square,board,letter,word,attemptedWords) {
 	var priorLetters;
 	var valid = false;
 	//checking across
-	console.log("*********************");
-	console.log("*********************");
-	console.log("*********************");
-	console.log("checking if " + letter + " works in ", square);
+	//console.log("*********************");
+	//console.log("*********************");
+	//console.log("*********************");
+	//console.log("checking if " + letter + " works in ", square);
 	wordLength = Board.getWordLength(square,board,true);
-	console.log("wordLength: " + wordLength);
+	//console.log("wordLength: " + wordLength);
 	word += letter;
-	console.log("word so far: " + word);
+	//console.log("word so far: " + word);
 	wordChoices = game.answerLengthsByLetter[wordLength][word];
 	if (!wordChoices) {
-		console.log("no matching words");
+		//console.log("no matching words");
 		return false;
 	} else if ($.inArray(word, attemptedWords) !== -1) {
 		return false;
 	}
 	
 	//checking down
-	console.log("Matches! ", wordChoices);
-	console.log("Checking down...");
+	//console.log("Matches! ", wordChoices);
+	//console.log("Checking down...");
 	wordLength = Board.getWordLength(square,board,false);
-	console.log("wordLength: " + wordLength);
+	//console.log("wordLength: " + wordLength);
 	word = Board.getWordFromSquare(square,board,false);
 	word += letter;
-	console.log("word so far: " + word);
+	//console.log("word so far: " + word);
 	wordChoices = game.answerLengthsByLetter[wordLength][word];
 	if (!wordChoices) {
-		console.log("no matching words");
+		//console.log("no matching words");
 		return false;
 	} else if ($.inArray(word, attemptedWords) !== -1) {
 		return false;
 	}
-	console.log("Matches! ", wordChoices);
-	console.log(letter + " is valid");
+	//console.log("Matches! ", wordChoices);
+	//console.log(letter + " is valid");
 	return true;
 }
 
@@ -246,13 +246,16 @@ Board.findNumEmptySquaresInDirection = function(square,dir,board) {
 
 Board.clearSquaresToRight = function(square,board) {
 	var squares = Board.getSquaresInDirection(square,board,'e');
-	squares.push(square);
 	for (var i=0; i<squares.length;i++) {
 		var sqId = "s"+squares[i].row+"_"+squares[i].col;
 		board[squares[i].row][squares[i].col] = "e";
 		gameView.removeLetter({row:squares[i].row,col:squares[i].col});
 		game.attemptedLettersInSquares[sqId] = [];
 	}
+	var sqId = "s"+square.row+"_"+square.col;
+	board[square.row][square.col] = "e";
+	gameView.removeLetter({row:square.row,col:square.col});
+	
 	return board;
 }
 
