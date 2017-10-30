@@ -17,6 +17,9 @@ var game = {
 		this.answerLengthsByLetter = new Object();
 		this.attemptedLettersInSquares = new Object();
 		this.attemptedWordsInSquares = new Object();
+		this.words = new Object();
+		this.words.across = new Object();
+		this.words.down = new Object();
 		this.squares = new Object();
 		this.lettersArray = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];	
 		this.directionsArray = ["n","e","s","w"];					
@@ -55,7 +58,8 @@ game.getAnswerLengths = function() {
 			for (var len in data) {
 				game.answerLengths[len] = data[len];
 			}
-			game.getAnswerLengthsByLetter();
+			game.addNumbers();
+			//game.getAnswerLengthsByLetter();
 		}
 	});
 }
@@ -83,46 +87,283 @@ game.addNumbers = function() {
 			if (board[row][col] !== "e") {
 				continue;
 			}
+			game.squares['s'+row+'_'+col] = new Object();
 			if (Board.isValidForNum({row:row,col:col},board)) {
 				gameView.addNumber(number,{row:row,col:col},board);
-				game.squares['s'+row+'_'+col] = new Object();
-				game.squares['s'+row+'_'+col]["num"] = number;
+				game.squares['s'+row+'_'+col].num = number;
 				number++;
 			}
 			
 		}
 	}
-	//game.addWords();
-	game.analyzeBoard(board);
+	game.fillBoardWithWords(board);
+}
+
+game.doWordsCross = function(word1, word2) {
+	var squares1 = word1.squares;
+	var squares2 = word2.squares;
+	
+	return squares1.some(function (sq) {
+        return squares2.indexOf(sq) >= 0;
+    });	
+}
+
+game.fillBoardWithWords = function(board) {
+	var word1;
+	var word2;
+	var wordPlace = {};
+	var intersectingSquares = [];
+	var usedWords = {};
+	var across = true;
+	var filledWordPlaces = [];
+	var	matchPattern;
+	
+	//this holds instances of words that are in the board. game.words.across["1"] is 1 across, it will have properties like length, squares (square coords from the board) that it occupies, and the word that occupies it.
+	var words = game.createWordsObj(board);
+	
+	// Get an array of the across keys:
+	var acrossArr = Object.keys(words.across);
+	
+	// Then sort by using the keys to lookup the values in the original object:
+	acrossArr.sort(function(a, b) { 
+		return words.across[b].length - words.across[a].length;
+	});
+	
+	// Get an array of the down keys:
+	var downArr = Object.keys(words.down);
+	
+	// Then sort by using the keys to lookup the values in the original object:
+	downArr.sort(function(a, b) {
+		return words.down[b].length - words.down[a].length;
+	});
+	
+	console.log(acrossArr);
+	console.log(downArr);
+	
+	while (acrossArr.length > 0 && downArr.length > 0) {
+		wordPlace = {};
+		//Getting the longest word place on the board, either across or down
+		if (across) {
+			//wordPlace["num"] = acrossArr.shift();
+			wordPlace["num"] = acrossArr[0];
+			wordPlace["dir"] = "across";
+			word1 = words.across[wordPlace["num"]];
+		} else {
+			//wordPlace["num"] = downArr.shift();
+			wordPlace["num"] = downArr[0];
+			wordPlace["dir"] = "down";
+			word1 = words.down[wordPlace["num"]];
+		}
+		
+		if (!wordPlace["usedWords"]) {
+			wordPlace["usedWords"] = [];
+		}
+		
+		/*
+		if (word2) {
+			var count = 1;
+			var limit = word1.squares.length;
+			while (!game.doWordsCross(word1, word2)) {
+				if (across) {
+					wordPlace["num"] = acrossArr[count];
+					wordPlace["dir"] = "across";
+					word1 = words.across[wordPlace["num"]];
+				} else {
+					wordPlace["num"] = downArr[count];
+					wordPlace["dir"] = "down";
+					word1 = words.down[wordPlace["num"]];
+				}
+				count++;
+				if (count == limit) {
+					break;
+				}
+			}
+		}
+		*/
+		console.log("***************");
+		console.log("doing " + wordPlace['num'] + wordPlace['dir']);
+		
+		//gets a regex pattern such as [A-Z][A-Z]G[A-Z] that any new word needs to match
+		matchPattern = game.getMatchPattern(word1,board);
+		if (word2) {
+			var count = 1;
+			var limit = word1.squares.length;
+			while (!matchPattern) {
+				console.log("this word doesn't cross shit!")
+				if (across) {
+					wordPlace["num"] = acrossArr[count];
+					wordPlace["dir"] = "across";
+					word1 = words.across[wordPlace["num"]];
+				} else {
+					wordPlace["num"] = downArr[count];
+					wordPlace["dir"] = "down";
+					word1 = words.down[wordPlace["num"]];
+				}
+				console.log("doing " + wordPlace['num'] + wordPlace['dir'] + " instead!!!!");
+				matchPattern = game.getMatchPattern(word1,board);
+				count++;
+				if (count == limit) {
+					break;
+				}
+			}
+		}
+		var wordLength = word1.length;
+		var possibleWords = game.getPossibleWords(wordLength, matchPattern, wordPlace["usedWords"]);
+		while (possibleWords.length == 0) {
+			//debugger;
+			console.log("Can't find a word to fit");
+			/*
+			if (across) {
+				acrossArr.unshift(wordPlace["num"]);
+			} else {
+				downArr.unshift(wordPlace["num"]);
+			}
+			*/
+			wordPlace = filledWordPlaces.pop();
+			word = words[wordPlace["dir"]][wordPlace["num"]];
+			console.log("going back to " + wordPlace['num'] + wordPlace['dir']);
+			board = Board.clearBoard(board);
+			board = Board.addWordsToBoard(filledWordPlaces,words,board);
+			wordLength = word.length;
+			matchPattern = game.getMatchPattern(word,board);
+			possibleWords = game.getPossibleWords(wordLength, matchPattern, wordPlace["usedWords"]);
+			if (wordPlace.dir == "across") {
+				wordPlace["num"] = acrossArr.shift();
+				across = false;
+			} else {
+				wordPlace["num"] = downArr.shift();
+				across = true;
+			}	
+		}	
+		var chosenWord = possibleWords[Math.floor(Math.random()*possibleWords.length)];
+		console.log("found word: " + chosenWord);
+		
+		board = game.storeWordInBoard(chosenWord,word1,board);
+		wordPlace["usedWords"].push(chosenWord);
+		filledWordPlaces.push(wordPlace);
+		gameView.renderAnswers(board);
+		if (across) {
+			acrossArr.shift();
+			across = false;
+		} else {
+			downArr.shift();
+			across = true;
+		}
+		word2 = word1;
+	}
 }
 
 game.analyzeBoard = function(board) {
 	
+	//this holds instances of squares. The keys are the coords (ex. s1_1) and they hold data about what number is in the square, how long the words are both across and down, and eventually clues and answers
 	var squares = game.createSquaresObj(board);
 }
 
-game.createSquaresObj = function(board) {
+game.storeWordInBoard = function(word,place,board) {
+	var squares = place.squares;
+	if (word.length != squares.length) {
+		return false;
+	}
+	for (var i=0;i<squares.length;i++) {
+		var sqObj = game.getSquareFromId(squares[i]);
+		board[sqObj.row][sqObj.col] = word.charAt(i);
+	}
+	return board;
+}
+
+game.clearWordInBoard = function(place,board) {
+	var squares = place.squares;
+	for (var i=0;i<squares.length;i++) {
+		board[squares[i].row][squares[i].col] = "e";
+	}
+	return board;
+}
+
+game.getPossibleWords = function(length, pattern, usedWords) {
+	var wordChoices = [];
+	var possibleWordChoices = game.answerLengths[length];
+	if (pattern) {
+		for (var i=0; i<possibleWordChoices.length; i++) {
+			if (possibleWordChoices[i].match(pattern)) {
+				if ($.inArray(possibleWordChoices[i], usedWords) == -1) {
+					wordChoices.push(possibleWordChoices[i]);
+				}	
+			}
+		}
+	} else {
+		wordChoices = possibleWordChoices;
+	}
+	return wordChoices;
+}
+
+game.getIntersectingSquares = function(word1,word2,board) {
+	var squares1 = word1.squares;
+	var squares2 = word2.squares;
+	var intersections = [];
+	
+	for (var i=0; i<squares1.length; i++) {
+		var index = squares2.indexOf(squares1[i]);
+		if (index > 0) {
+			var square = squares2[index];
+			square = game.getSquareFromId(square);
+			var letter = board[square.row][square.col];
+			intersections.push({square:square,letter:letter});
+		}
+	}
+	return intersections;
+}
+
+game.getMatchPattern = function(word,board) {
+	var matchPattern = '';
+	var matchCount = 0;
+	var squares = word.squares;
+	for (var i=0; i<squares.length; i++) {
+		var sqObj = game.getSquareFromId(squares[i]);
+		if (board[sqObj.row][sqObj.col] == "e") {
+			matchPattern += "[A-Z]";
+		} else {
+			matchPattern += board[sqObj.row][sqObj.col];
+			matchCount++;
+		}
+	}
+	if (!matchCount) {
+		matchPattern = false;
+	}
+	return matchPattern;
+}
+
+game.getSquareFromId = function(id) {
+	var row = id.match(/^s([0-9]{1,})_/)[1];
+	var col = id.match(/_([0-9]{1,})$/)[1];
+	
+	return {row:row,col:col};
+}
+
+game.createWordsObj = function(board) {
 	
 	var inMiddleOfWord = false;
+	var longestWordLength;
+	var number;
 	//across
 	var across = true;
 	for (var row = 0; row < Config.numRows;row++) {
 		inMiddleOfWord = false;
 		for (var col = 0; col < Config.numCols;col++) {
-			if (board[row][col] !== "e" || inMiddleOfWord) {
-				if (board[row][col] == "b") {
-					inMiddleOfWord = false;
-				}
-				continue;
-			} else {
-				inMiddleOfWord = false;
-			}
 			var sqId = 's'+row+'_'+col;
-			var number = game.squares[sqId]["num"];
+			if (board[row][col] == "b") {
+				inMiddleOfWord = false;
+				continue;
+			} else if (!inMiddleOfWord) {
+				number = game.squares[sqId]["num"];
+				inMiddleOfWord = true;
+				game.words["across"][number] = {};
+				game.words["across"][number].squares = [];
+			}
+			
 			var wordLength = Board.getWordLength({row:row,col:col},board,across);
-			game.squares[sqId][number+"a"] = new Object();
-			game.squares[sqId][number+"a"].length = wordLength;
-			inMiddleOfWord = true;
+			//game.words["across"][number].squares.push({row:row,col:col});
+			game.words["across"][number].squares.push(sqId);
+			game.words["across"][number].length = wordLength;
 		}
 	}
 	//down
@@ -130,23 +371,23 @@ game.createSquaresObj = function(board) {
 	for (var col = 0; col < Config.numCols;col++) {
 		inMiddleOfWord = false;
 		for (var row = 0; row < Config.numRows;row++) {
-			if (board[row][col] !== "e" || inMiddleOfWord) {
-				if (board[row][col] == "b") {
-					inMiddleOfWord = false;
-				}
-				continue;
-			} else {
-				inMiddleOfWord = false;
-			}
 			var sqId = 's'+row+'_'+col;
-			var number = game.squares[sqId]["num"];
+			if (board[row][col] == "b") {
+				inMiddleOfWord = false;
+				continue;
+			} else if (!inMiddleOfWord) {
+				number = game.squares[sqId]["num"];
+				inMiddleOfWord = true;
+				game.words["down"][number] = {};
+				game.words["down"][number].squares = [];
+			}
+			
 			var wordLength = Board.getWordLength({row:row,col:col},board,across);
-			game.squares[sqId][number+"d"] = new Object();
-			game.squares[sqId][number+"d"].length = wordLength;
-			inMiddleOfWord = true;
+			game.words["down"][number].squares.push(sqId);
+			game.words["down"][number].length = wordLength;
 		}
 	}
-	return game.squares;
+	return game.words;
 }
 
 game.addWords = function() {

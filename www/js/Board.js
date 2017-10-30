@@ -14,7 +14,36 @@ Board.buildBoard = function(board) {
 		}
 	}
 	return newBoard;
-}			
+}
+
+Board.clearBoard = function(board) {
+	var newBoard = [];
+	for (var row = 0; row < Config.numRows;row++) {
+		newBoard[row] = new Array(); 
+		for (var col = 0; col < Config.numCols;col++) {
+			if (board[row][col] == "b") {
+				newBoard[row][col] = "b";
+			} else {
+				newBoard[row][col] = "e";
+			}
+		}
+	}
+	return newBoard;
+}
+
+Board.addWordsToBoard = function(wordPlaces,words,board) {
+	//debugger;
+	console.log(wordPlaces);
+	for (var i=0; i<wordPlaces.length; i++) {
+		var wordPlace = words[wordPlaces[i]["dir"]][wordPlaces[i]["num"]];
+		var squares = wordPlace.squares;
+		var word = wordPlaces[i].usedWords[0];
+		for (var j=0;j<squares.length;j++) {
+			board[squares[j].row][squares[j].col] = word.charAt(j);
+		}
+	}
+	return board;
+}	
 
 Board.addBlackSquares = function(board) {
 	var numBlackBoxesInRow = 0;
