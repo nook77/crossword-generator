@@ -1,7 +1,32 @@
 /*
-I think I need to build up a complete word first before adding it into the grid. So, start with a random letter. Make sure that there are words of that length that start with the random letter, both across and down. If so, add that letter into a wordInProgress array and move to the next column. If we get to a point where we can't find a letter to fit in both an across and down word, we need to move back a column and try a different letter.
+Going to try recursion
+function will take in a board, wordPlace { 'num': "13", 'dir': "across", 'length': 7 }. It will get all possible word choices for that spot as an array. Go through the array - add each word to the board, send that board back into the function with a new wordPlace. How to choose new wordPlace... 
 
+have game.words object
+game.words['across']['1'].squares = [{row:2,col:1},{row:2,col:2}...]
+game.words['across']['1'].length = 7
+game.words['across']['1'].answer = 'DOGJIZZ'
 
+so we choose the longest across word first
+the idea is to always cross words
+so the function will be called, the array will be gone through sending each board with each word added to that across spot. 
+
+function (board, wordplace) {
+	
+	possibleWords Array
+	if no possibleWords return false
+	
+	for word in possibleWords loop {
+		
+		add word to board
+	
+		for loop square in game.words['across']['1'].squares {
+			get word for square in squares in opposite dir
+			call function send board, word
+		}
+	}
+	return board
+}
 */
 
 
@@ -17,9 +42,9 @@ var game = {
 		this.answerLengthsByLetter = new Object();
 		this.attemptedLettersInSquares = new Object();
 		this.attemptedWordsInSquares = new Object();
-		this.words = new Object();
-		this.words.across = new Object();
-		this.words.down = new Object();
+		this.wordPlaces = new Object();
+		this.wordPlaces.across = new Object();
+		this.wordPlaces.down = new Object();
 		this.squares = new Object();
 		this.lettersArray = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];	
 		this.directionsArray = ["n","e","s","w"];					
@@ -108,38 +133,81 @@ game.doWordsCross = function(word1, word2) {
     });	
 }
 
+game.addWordToBoard = function(board,wordPlace) {
+	debugger;
+	
+	var matchPattern = game.getMatchPattern(wordPlace,board);
+	var possibleWords = game.getPossibleWords(wordPlace.length, matchPattern)
+	if (possibleWords.length == 0) {
+		return false;
+	}
+	
+	for (var i=0; i<possibleWords.length; i++) {
+		var word = possibleWords[i];
+		var nextBoard = game.storeWordInBoard(word,wordPlace,board);
+		wordPlace.answer = word;
+		
+		for (var j=0; j<wordPlace.squares.length; j++) {
+			
+			var across = true;
+			if (wordPlace.dir == "across") {
+				across = false;
+			}
+			var nextWordPlace = Board.getWordPlaceFromSquare(wordPlace.squares[j],nextBoard,across);
+			
+			if (nextWordPlace.answer) {
+				return board;
+			} else {
+				nextBoard = game.addWordToBoard(nextBoard,nextWordPlace);
+				if (!nextBoard) {
+					return false;
+				}
+			}
+		}
+	}
+	return nextBoard;
+}
+
 game.fillBoardWithWords = function(board) {
-	var word1;
-	var word2;
+	//var word1;
+	//var word2;
 	var wordPlace = {};
-	var intersectingSquares = [];
+	var answerObj = {};
+	//var intersectingSquares = [];
 	var usedWords = {};
 	var across = true;
-	var filledWordPlaces = [];
+	//var filledWordPlaces = [];
 	var	matchPattern;
 	
 	//this holds instances of words that are in the board. game.words.across["1"] is 1 across, it will have properties like length, squares (square coords from the board) that it occupies, and the word that occupies it.
-	var words = game.createWordsObj(board);
+	var wordPlaces = game.createWordPlacesObj(board);
 	
-	// Get an array of the across keys:
-	var acrossArr = Object.keys(words.across);
+	// Get an array of the across keys: ["1","5","8"]
+	var acrossArr = Object.keys(wordPlaces.across);
 	
 	// Then sort by using the keys to lookup the values in the original object:
 	acrossArr.sort(function(a, b) { 
-		return words.across[b].length - words.across[a].length;
+		return wordPlaces.across[b].length - wordPlaces.across[a].length;
 	});
 	
-	// Get an array of the down keys:
-	var downArr = Object.keys(words.down);
+	// Get an array of the down keys: ["1","5","8"]
+	var downArr = Object.keys(wordPlaces.down);
 	
 	// Then sort by using the keys to lookup the values in the original object:
 	downArr.sort(function(a, b) {
-		return words.down[b].length - words.down[a].length;
+		return wordPlaces.down[b].length - wordPlaces.down[a].length;
 	});
 	
 	console.log(acrossArr);
 	console.log(downArr);
 	
+	wordPlace["num"] = acrossArr[0];
+	wordPlace["dir"] = "across";
+	answerObj = wordPlaces.across[wordPlace["num"]]; //{squares, length, answer}
+	
+	board = game.addWordToBoard(board,answerObj);
+	
+	/*
 	while (acrossArr.length > 0 && downArr.length > 0) {
 		wordPlace = {};
 		//Getting the longest word place on the board, either across or down
@@ -147,12 +215,12 @@ game.fillBoardWithWords = function(board) {
 			//wordPlace["num"] = acrossArr.shift();
 			wordPlace["num"] = acrossArr[0];
 			wordPlace["dir"] = "across";
-			word1 = words.across[wordPlace["num"]];
+			word1 = wordPlaces.across[wordPlace["num"]];
 		} else {
 			//wordPlace["num"] = downArr.shift();
 			wordPlace["num"] = downArr[0];
 			wordPlace["dir"] = "down";
-			word1 = words.down[wordPlace["num"]];
+			word1 = wordPlaces.down[wordPlace["num"]];
 		}
 		
 		if (!wordPlace["usedWords"]) {
@@ -180,11 +248,13 @@ game.fillBoardWithWords = function(board) {
 			}
 		}
 		*/
+		/*
 		console.log("***************");
 		console.log("doing " + wordPlace['num'] + wordPlace['dir']);
 		
 		//gets a regex pattern such as [A-Z][A-Z]G[A-Z] that any new word needs to match
 		matchPattern = game.getMatchPattern(word1,board);
+		/*
 		if (word2) {
 			var count = 1;
 			var limit = word1.squares.length;
@@ -207,18 +277,13 @@ game.fillBoardWithWords = function(board) {
 				}
 			}
 		}
+		*/
+		/*
 		var wordLength = word1.length;
 		var possibleWords = game.getPossibleWords(wordLength, matchPattern, wordPlace["usedWords"]);
 		while (possibleWords.length == 0) {
 			//debugger;
 			console.log("Can't find a word to fit");
-			/*
-			if (across) {
-				acrossArr.unshift(wordPlace["num"]);
-			} else {
-				downArr.unshift(wordPlace["num"]);
-			}
-			*/
 			wordPlace = filledWordPlaces.pop();
 			word = words[wordPlace["dir"]][wordPlace["num"]];
 			console.log("going back to " + wordPlace['num'] + wordPlace['dir']);
@@ -234,11 +299,44 @@ game.fillBoardWithWords = function(board) {
 				wordPlace["num"] = downArr.shift();
 				across = true;
 			}	
-		}	
-		var chosenWord = possibleWords[Math.floor(Math.random()*possibleWords.length)];
-		console.log("found word: " + chosenWord);
+		}
 		
-		board = game.storeWordInBoard(chosenWord,word1,board);
+		var chosenWord = '';
+		while (!chosenWord && possibleWords.length > 0) {
+			var randomElem = Math.floor(Math.random()*possibleWords.length);
+			chosenWord = possibleWords.splice(randomElem, 1)[0];
+			console.log("found word: " + chosenWord);
+			
+			var testBoard = game.storeWordInBoard(chosenWord,word1,board);
+			//here we need to check to see if this word has any conflicts with cross words
+			
+			
+			for (var i=0; i<wordLength; i++) {
+				var sqObj = word1.squares[i];
+				if (across) {
+					var crossWord = Board.getWordPlaceFromSquare(sqObj,testBoard);
+					matchPattern = game.getMatchPattern(crossWord,testBoard);
+					var match = game.isThereAMatch(crossWord.length, matchPattern);
+				} else {
+					var crossWord = Board.getWordPlaceFromSquare(sqObj,testBoard,true);
+					matchPattern = game.getMatchPattern(crossWord,testBoard);
+					var match = game.isThereAMatch(crossWord.length, matchPattern);
+				}
+				if (!match) {
+					console.log("no matching words " + i);
+					
+					chosenWord = '';
+					break;
+				}
+			}
+		}
+		
+		if (!chosenWord) {
+			console.log("we need to back track!");
+			return false;
+		}
+		/*
+		board = game.storeWordInBoard(chosenWord,word1,board);		
 		wordPlace["usedWords"].push(chosenWord);
 		filledWordPlaces.push(wordPlace);
 		gameView.renderAnswers(board);
@@ -250,7 +348,8 @@ game.fillBoardWithWords = function(board) {
 			across = true;
 		}
 		word2 = word1;
-	}
+		
+	}*/
 }
 
 game.analyzeBoard = function(board) {
@@ -259,14 +358,14 @@ game.analyzeBoard = function(board) {
 	var squares = game.createSquaresObj(board);
 }
 
-game.storeWordInBoard = function(word,place,board) {
-	var squares = place.squares;
+game.storeWordInBoard = function(word,wordPlace,board) {
+	var squares = wordPlace.squares;
 	if (word.length != squares.length) {
 		return false;
 	}
 	for (var i=0;i<squares.length;i++) {
-		var sqObj = game.getSquareFromId(squares[i]);
-		board[sqObj.row][sqObj.col] = word.charAt(i);
+//		var sqObj = game.getSquareFromId(squares[i]);
+		board[squares[i].row][squares[i].col] = word.charAt(i);
 	}
 	return board;
 }
@@ -296,6 +395,20 @@ game.getPossibleWords = function(length, pattern, usedWords) {
 	return wordChoices;
 }
 
+game.isThereAMatch = function(length, pattern) {
+
+	var possibleWordChoices = game.answerLengths[length];
+	if (pattern) {
+		for (var i=0; i<possibleWordChoices.length; i++) {
+			if (possibleWordChoices[i].match(pattern)) {
+				return true;
+			}
+		}
+	}
+	
+	return false;
+}
+
 game.getIntersectingSquares = function(word1,word2,board) {
 	var squares1 = word1.squares;
 	var squares2 = word2.squares;
@@ -318,7 +431,12 @@ game.getMatchPattern = function(word,board) {
 	var matchCount = 0;
 	var squares = word.squares;
 	for (var i=0; i<squares.length; i++) {
-		var sqObj = game.getSquareFromId(squares[i]);
+		if (typeof squares[i] !== 'object') {
+			var sqObj = game.getSquareFromId(squares[i]);
+		} else {
+			var sqObj = squares[i];
+		}
+		
 		if (board[sqObj.row][sqObj.col] == "e") {
 			matchPattern += "[A-Z]";
 		} else {
@@ -339,7 +457,7 @@ game.getSquareFromId = function(id) {
 	return {row:row,col:col};
 }
 
-game.createWordsObj = function(board) {
+game.createWordPlacesObj = function(board) {
 	
 	var inMiddleOfWord = false;
 	var longestWordLength;
@@ -356,14 +474,17 @@ game.createWordsObj = function(board) {
 			} else if (!inMiddleOfWord) {
 				number = game.squares[sqId]["num"];
 				inMiddleOfWord = true;
-				game.words["across"][number] = {};
-				game.words["across"][number].squares = [];
+				game.wordPlaces["across"][number] = {};
+				game.wordPlaces["across"][number].squares = [];
+				game.wordPlaces["across"][number].answer = '';
+				game.wordPlaces["across"][number].dir = 'across';
+				
 			}
 			
 			var wordLength = Board.getWordLength({row:row,col:col},board,across);
-			//game.words["across"][number].squares.push({row:row,col:col});
-			game.words["across"][number].squares.push(sqId);
-			game.words["across"][number].length = wordLength;
+			game.wordPlaces["across"][number].squares.push({row:row,col:col});
+			//game.wordPlaces["across"][number].squares.push(sqId);
+			game.wordPlaces["across"][number].length = wordLength;
 		}
 	}
 	//down
@@ -378,16 +499,19 @@ game.createWordsObj = function(board) {
 			} else if (!inMiddleOfWord) {
 				number = game.squares[sqId]["num"];
 				inMiddleOfWord = true;
-				game.words["down"][number] = {};
-				game.words["down"][number].squares = [];
+				game.wordPlaces["down"][number] = {};
+				game.wordPlaces["down"][number].squares = [];
+				game.wordPlaces["down"][number].answer = '';
+				game.wordPlaces["down"][number].dir = 'down';				
 			}
 			
 			var wordLength = Board.getWordLength({row:row,col:col},board,across);
-			game.words["down"][number].squares.push(sqId);
-			game.words["down"][number].length = wordLength;
+			game.wordPlaces["down"][number].squares.push({row:row,col:col});
+			//game.wordPlaces["down"][number].squares.push(sqId);
+			game.wordPlaces["down"][number].length = wordLength;
 		}
 	}
-	return game.words;
+	return game.wordPlaces;
 }
 
 game.addWords = function() {

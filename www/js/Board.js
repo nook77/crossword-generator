@@ -51,11 +51,12 @@ Board.addBlackSquares = function(board) {
 	var blackBoxLimit = 0;
 	var wordLength = 0;
 	
-	for (var row = 0; row < 8;row++) {
+	for (var row = 0; row < Math.round(Config.numRows/2) ;row++) {
 		var reverseRow = (Config.numRows - 1) - row; //diagonal mirror image coordinate
 		
 		//Choosing how many black boxes will be on this row with a random number and weighting the choices
 		var randNum = Math.floor(Math.random() * 20);
+		/*
 		if (randNum < 4) {
 			numBlackBoxesInRow = 8;
 		} else if (randNum < 8) {
@@ -68,6 +69,20 @@ Board.addBlackSquares = function(board) {
 			numBlackBoxesInRow = 6;
 		} else {
 			numBlackBoxesInRow = 10;
+		}
+		*/
+		if (randNum < 4) {
+			numBlackBoxesInRow = 1;
+		} else if (randNum < 8) {
+			numBlackBoxesInRow = 1;
+		} else if (randNum  < 12) {
+			numBlackBoxesInRow = 0;
+		} else if (randNum < 15) {
+			numBlackBoxesInRow = 0;
+		} else if (randNum < 18) {
+			numBlackBoxesInRow = 0;
+		} else {
+			numBlackBoxesInRow = 2;
 		}
 		var count = 0;
 		
@@ -346,7 +361,31 @@ Board.getFirstRowOfWord = function(square,board) {
 	return row;
 }
 
-Board.getWordFromSquare = function(square,board,across) {
+Board.getWordPlaceFromSquare = function(square,board,across) {
+	var wordPlace = {};
+	//word.squares = [];
+	
+	if (across) {
+		square.col = Board.getFirstColOfWord(square,board);
+		var sqId = 's'+square.row+'_'+square.col;
+		number = game.squares[sqId]["num"];
+		wordPlace = game.wordPlaces.across[number];
+		//word.squares = Board.getSquaresInDirection(square,board,'e');
+		//word.squares.unshift({row:square.row,col:square.col});
+	} else {
+		square.row = Board.getFirstRowOfWord(square,board);
+		var sqId = 's'+square.row+'_'+square.col;
+		number = game.squares[sqId]["num"];
+		wordPlace = game.wordPlaces.down[number];
+		//word.squares = Board.getSquaresInDirection(square,board,'s');
+		//word.squares.unshift({row:square.row,col:square.col});
+	}
+	
+	//word.length = word.squares.length;
+	return wordPlace;
+}
+
+Board.getAnswerFromSquare = function(square,board,across) {
 	var letters = [];
 	var word = '';
 	if (across) {
